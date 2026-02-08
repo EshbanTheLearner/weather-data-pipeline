@@ -1,0 +1,32 @@
+{
+  "agents": {
+    "db_agent": {
+      "name": "Database Agent",
+      "description": "Handles TimescaleDB data ingestion and schema management",
+      "tools": ["Read", "Write", "Bash"],
+      "model": "sonnet",
+      "focus_areas": ["database", "sql", "timescaledb"]
+    },
+    "spark_agent": {
+      "name": "Spark Processing Agent", 
+      "description": "Manages Apache Spark / PySpark data processing and aggregation",
+      "tools": ["Read", "Write", "Bash"],
+      "model": "sonnet",
+      "focus_areas": ["spark", "data-processing", "aggregation"]
+    },
+    "webapp_agent": {
+      "name": "WebApp Agent",
+      "description": "Develops Flask API and React dashboard",
+      "tools": ["Read", "Write", "Bash"],
+      "model": "sonnet",
+      "focus_areas": ["flask", "react", "api", "frontend"]
+    },
+    "orchestrator": {
+      "name": "Master Orchestrator",
+      "description": "Coordinates all agents and manages workflow",
+      "tools": ["Read", "Write", "Bash"],
+      "model": "opus",
+      "manages": ["db_agent", "spark_agent", "webapp_agent"]
+    }
+  }
+}

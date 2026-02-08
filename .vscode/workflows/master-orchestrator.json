@@ -1,0 +1,538 @@
+{
+  "id": "workflow-1770278498120",
+  "name": "master-orchestrator",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "start-node-default",
+      "type": "start",
+      "name": "start-node-default",
+      "position": {
+        "x": -645,
+        "y": -45
+      },
+      "data": {
+        "label": "Start"
+      }
+    },
+    {
+      "id": "end-node-default",
+      "type": "end",
+      "name": "end-node-default",
+      "position": {
+        "x": 4305,
+        "y": -780
+      },
+      "data": {
+        "label": "End"
+      }
+    },
+    {
+      "id": "agent-1770200345506",
+      "type": "subAgent",
+      "name": "requirements_analyzer",
+      "position": {
+        "x": -150,
+        "y": -30
+      },
+      "data": {
+        "description": "requirements analyzer sub-agent",
+        "prompt": "You are an expert system architect analyzing project requirements.\n\nYour task:\n1. Carefully read the user's requirements\n2. Identify which components are needed:\n   - Database setup (TimescaleDB)? → db_agent\n   - Data processing (Apache Spark)? → spark_agent\n   - Web dashboard (Flask + React)? → webapp_agent\n\n3. Analyze dependencies:\n   - If WebApp is needed AND no existing DB → DB must come first\n   - If Spark is needed → DB should come first (for data source)\n   - WebApp depends on either DB or Spark output\n\n4. Determine execution order based on dependencies\n\n5. Output a JSON plan with this EXACT structure:\n{\n  \"agents_needed\": [\"db_agent\", \"spark_agent\", \"webapp_agent\"],\n  \"execution_order\": [\"db_agent\", \"spark_agent\", \"webapp_agent\"],\n  \"dependencies\": {\n    \"spark_agent\": [\"db_agent\"],\n    \"webapp_agent\": [\"db_agent\", \"spark_agent\"]\n  },\n  \"reasoning\": \"Brief explanation of why this order\",\n  \"estimated_time\": \"3-4 days\"\n}\n\nIMPORTANT: \n- Only include agents that are actually needed\n- Ensure execution order respects dependencies\n- Be conservative with time estimates",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "requirements_analyzer",
+        "tools": "Read"
+      }
+    },
+    {
+      "id": "question-1770200452878",
+      "type": "askUserQuestion",
+      "name": "confirm_db_setup",
+      "position": {
+        "x": 525,
+        "y": 90
+      },
+      "data": {
+        "questionText": "The analysis recommends setting up the database first. Do you want to proceed with database setup?",
+        "options": [
+          {
+            "label": "Yes, set up TimescaleDB first",
+            "description": "yes_db_setup",
+            "id": "opt-1770200452881-w14px3f"
+          },
+          {
+            "label": "No, I already have the database configured",
+            "description": "no_db_skip",
+            "id": "opt-1770200452881-pw8wpv9"
+          }
+        ],
+        "outputPorts": 2,
+        "name": "confirm_db_setup"
+      }
+    },
+    {
+      "id": "agent-1770200534074",
+      "type": "subAgent",
+      "name": "execute_db_agent",
+      "position": {
+        "x": 870,
+        "y": 0
+      },
+      "data": {
+        "description": "execute db agent sub-agent",
+        "prompt": "You are the DB Agent execution coordinator.\n\nYour task:\n1. Execute the db-agent-workflow command\n2. Monitor execution progress\n3. Capture all outputs\n4. Report status\n\nExecution command:\nclaude run-command db-agent-workflow\n\nMonitor for:\n- Files created in src/database/\n- Any error messages\n- Execution completion\n\nOutput JSON status:\n{\n  \"status\": \"success\" | \"error\" | \"partial\",\n  \"files_created\": [\"src/database/schema.sql\", \"config/database.py\", ...],\n  \"errors\": [],\n  \"warnings\": [],\n  \"execution_time\": \"5m 23s\",\n  \"next_agent\": \"validate_db_output\"\n}",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "execute_db_agent",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "agent-1770200577640",
+      "type": "subAgent",
+      "name": "validate_db_output",
+      "position": {
+        "x": 1215,
+        "y": -75
+      },
+      "data": {
+        "description": "validate db output sub-agent",
+        "prompt": "You are a validation specialist for database setups.\n\nYour task:\n1. Check that all expected DB files were created:\n   - src/database/schema.sql\n   - config/database.py\n   - src/database/ingest_weather.py\n\n2. Validate SQL syntax:\n   - Run: psql --version (check PostgreSQL available)\n   - Validate schema.sql syntax if possible\n   - Check for common SQL errors\n\n3. Validate Python files:\n   - Run: python -m py_compile src/database/*.py\n   - Check for import errors\n   - Verify database connection config format\n\n4. Output validation report:\n{\n  \"validation_status\": \"pass\" | \"fail\",\n  \"checks_performed\": [\n    {\n      \"check\": \"Schema file exists\",\n      \"status\": \"pass\",\n      \"details\": \"src/database/schema.sql found\"\n    },\n    {\n      \"check\": \"Python syntax\",\n      \"status\": \"pass\",\n      \"details\": \"All .py files compile successfully\"\n    }\n  ],\n  \"errors\": [],\n  \"warnings\": [\"Consider adding indexes on location_id\"],\n  \"proceed_to_next_agent\": true | false\n}\n\nIf validation fails, set proceed_to_next_agent to false.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "validate_db_output",
+        "tools": "Read,Bash"
+      }
+    },
+    {
+      "id": "prompt-1770201456002",
+      "type": "prompt",
+      "name": "user_request_input",
+      "position": {
+        "x": -480,
+        "y": -90
+      },
+      "data": {
+        "label": "user request input",
+        "prompt": "I need to build a weather data system with the following requirements:\n\n{{user_requirements}}\n\nPlease analyze what components are needed and create:\n- Database schema (if needed)\n- Data processing pipeline (if needed)\n- Web dashboard (if needed)\n\nContext:\n- Technology Stack: {{tech_stack}}\n- Timeline: {{timeline}}\n- Team Size: {{team_size}}",
+        "variables": {},
+        "name": "user_request_input"
+      }
+    },
+    {
+      "id": "agent-1770201718569",
+      "type": "subAgent",
+      "name": "agent_order_planner",
+      "position": {
+        "x": 180,
+        "y": 45
+      },
+      "data": {
+        "description": "agent order planner sub-agent",
+        "prompt": "You are a workflow execution planner.\n\nYour task:\n1. Review the requirements analysis JSON from the previous agent\n2. Create a detailed execution plan with steps\n3. Identify potential risks and mitigation strategies\n\nOutput format:\n{\n  \"execution_plan\": [\n    {\n      \"step\": 1,\n      \"agent\": \"db_agent\",\n      \"description\": \"Set up TimescaleDB schema\",\n      \"estimated_duration\": \"2-4 hours\",\n      \"critical_path\": true\n    },\n    {\n      \"step\": 2,\n      \"agent\": \"spark_agent\",\n      \"description\": \"Create data processing pipeline\",\n      \"estimated_duration\": \"4-6 hours\",\n      \"critical_path\": true\n    }\n  ],\n  \"risks\": [\n    {\n      \"risk\": \"Database schema changes require Spark updates\",\n      \"mitigation\": \"Validate DB schema before Spark execution\",\n      \"severity\": \"medium\"\n    }\n  ],\n  \"success_criteria\": [\n    \"All agents complete without errors\",\n    \"Validation passes for each component\",\n    \"Integration tests pass\"\n  ]\n}\n\nBe thorough and consider edge cases.",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "agent_order_planner",
+        "tools": "Read"
+      }
+    },
+    {
+      "id": "ifelse-1770202089040",
+      "type": "ifElse",
+      "name": "check_db_validation",
+      "position": {
+        "x": 1560,
+        "y": -180
+      },
+      "data": {
+        "evaluationTarget": "proceed_to_next_agent == true",
+        "branches": [
+          {
+            "label": "Valid",
+            "condition": "When condition is true",
+            "id": "ifelse_0_1770202089042"
+          },
+          {
+            "label": "Invalid",
+            "condition": "When condition is false",
+            "id": "ifelse_1_1770202089042"
+          }
+        ],
+        "outputPorts": 2,
+        "name": "check_db_validation"
+      }
+    },
+    {
+      "id": "agent-1770202298823",
+      "type": "subAgent",
+      "name": "error_handler_db",
+      "position": {
+        "x": 1770,
+        "y": -60
+      },
+      "data": {
+        "description": "error handler db sub-agent",
+        "prompt": "You are an error handler for database validation failures.\n\n## Task\nThe DB Agent validation FAILED. Generate a helpful error report and stop the workflow.\n\n## Steps\n\n### 1. Read Validation Report\nRead: VALIDATION_REPORT_DB.json\nExtract all errors, warnings, and failed checks.\n\n### 2. Create Error Report: ERROR_REPORT_DB.md\n\nStructure:\n```markdown\n# Database Validation Failed\n\n## Summary\n- Status: FAILED\n- Errors: [count] critical, [count] high\n- Files affected: [list]\n\n## Errors Found\n\n### Error #1: [Title]\n**Severity:** Critical/High/Medium\n**Location:** src/database/schema.sql:45\n**Problem:** [Brief description]\n**Fix:**\n[Specific solution with code snippet if needed]\n**Test:** [Command to verify fix]\n\n[Repeat for each error]\n\n## Impact\n- What's broken\n- Why it blocks progress\n- Estimated fix time\n\n## Quick Fix Guide\n\n### Step 1: [Action]\n1. [Specific instruction]\n2. [Command to run]\n3. [How to verify]\n\n### Step 2: [Next action]\n[Continue...]\n\n## Resume Workflow\nAfter fixes:\n```bash\nclaude run-command db-agent-workflow\n# Or restart orchestrator\nclaude run-command master-orchestrator\n```\n\n## Common Issues\n| Error | Cause | Quick Fix |\n|-------|-------|-----------|\n| SQL syntax | Missing semicolon | Add ; at line end |\n| Import error | Module not installed | pip install psycopg2 |\n```\n\n### 3. Create Error Log\nSave to: error_logs/db_error_[timestamp].json\n```json\n{\n  \"timestamp\": \"[ISO datetime]\",\n  \"agent\": \"db_agent\",\n  \"error_count\": 3,\n  \"severity\": \"high\",\n  \"files_affected\": [\"...\"],\n  \"workflow_stopped\": true\n}\n```\n\n### 4. User Notification\nDisplay:\n```\n⚠️ DATABASE VALIDATION FAILED\n\nErrors: 3 critical\nReport: ERROR_REPORT_DB.md\n\nQuick fixes needed:\n1. [Primary issue] (30 min)\n2. [Secondary issue] (15 min)\n\nRe-run: claude run-command master-orchestrator\n```\n\n### 5. Stop Workflow\nOutput:\n```json\n{\n  \"workflow_status\": \"stopped\",\n  \"stop_reason\": \"db_validation_failed\",\n  \"user_action_required\": true,\n  \"can_resume_from\": \"db_agent\"\n}\n```\n\n## Critical Rules\n1. Be specific: exact file, line number, fix\n2. Provide runnable commands\n3. Estimate realistic fix times\n4. Focus on critical errors first\n5. Make report easy to follow\n\nGoal: Help user fix errors quickly and continue.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "error_handler_db",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770202421044",
+      "type": "subAgent",
+      "name": "execute_spark_agent",
+      "position": {
+        "x": 1770,
+        "y": -255
+      },
+      "data": {
+        "description": "execute spark agent sub-agent",
+        "prompt": "Execute the Spark Agent workflow.\n\nYour task:\n1. Run: claude run-command spark-agent-workflow\n2. Pass DB schema information from previous DB agent\n3. Monitor execution\n4. Capture outputs\n\nProvide context:\n- Database schema from: src/database/schema.sql\n- Connection config from: config/database.py\n\nOutput status JSON:\n{\n  \"status\": \"success\" | \"error\",\n  \"files_created\": [\"src/spark/process_weather.py\", ...],\n  \"errors\": [],\n  \"execution_time\": \"...\",\n  \"next_agent\": \"validate_spark_output\"\n}",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "execute_spark_agent",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "agent-1770202533141",
+      "type": "subAgent",
+      "name": "validate_spark_output",
+      "position": {
+        "x": 2115,
+        "y": -315
+      },
+      "data": {
+        "description": "validate spark output sub-agent",
+        "prompt": "You are a validation specialist for Apache Spark data processing pipelines.\n\n  Your task is to thoroughly validate all outputs from the Spark Agent execution.\n\n  ## Validation Checklist:\n\n  ### 1. File Existence Check\n  Verify these files exist:\n  - src/spark/process_weather.py\n  - src/spark/aggregate_weather.py\n  - config/spark_config.py\n  - docker-compose.yml (if Spark Docker setup was created)\n\n  ### 2. Python Syntax Validation\n  For each Python file in src/spark/:\n  - Run: python -m py_compile <filename>\n  - Check for syntax errors\n  - Verify imports are valid\n\n  ### 3. Spark Configuration Validation\n  Check config/spark_config.py contains:\n  - Spark session configuration\n  - Driver memory settings (minimum 2GB)\n  - Executor memory settings\n  - TimescaleDB JDBC connection string\n  - Proper error handling\n\n  ### 4. Database Schema Compatibility\n  Verify Spark scripts:\n  - Read from correct database tables (check src/database/schema.sql)\n  - Use correct column names\n  - Handle data types properly (timestamp, numeric, text)\n  - Include proper error handling for missing data\n\n  ### 5. Data Processing Logic Check\n  Review process_weather.py for:\n  - Valid DataFrame transformations\n  - Proper null handling\n  - Correct aggregation functions\n  - Window functions (if used)\n  - Write operations back to database\n\n  ### 6. Aggregation Script Check\n  Review aggregate_weather.py for:\n  - Hourly/daily/weekly aggregation logic\n  - Correct time windows\n  - Proper groupBy operations\n  - Valid output schema\n\n  ### 7. Dependencies Check\n  If requirements.txt exists in src/spark/:\n  - Verify PySpark version specified\n  - Check JDBC driver included\n  - Validate all dependencies are compatible\n\n  ### 8. Test Execution (if possible)\n  If spark-submit is available:\n  - Try dry-run: spark-submit --dry-run src/spark/process_weather.py\n  - Check for configuration errors\n  - Verify JDBC driver loads\n\n  ## Output Format\n\n  Generate a detailed JSON validation report with this EXACT structure:\n\n  {\n    \"validation_status\": \"pass\" | \"fail\" | \"partial\",\n    \"timestamp\": \"2024-01-15T10:30:00Z\",\n    \"checks_performed\": [\n      {\n        \"check_id\": \"file_existence\",\n        \"check_name\": \"File Existence Check\",\n        \"status\": \"pass\" | \"fail\",\n        \"details\": \"All required files found\",\n        \"files_checked\": [\"src/spark/process_weather.py\", \"...\"],\n        \"missing_files\": []\n      },\n      {\n        \"check_id\": \"python_syntax\",\n        \"check_name\": \"Python Syntax Validation\",\n        \"status\": \"pass\" | \"fail\",\n        \"details\": \"All Python files compile successfully\",\n        \"files_validated\": [\"src/spark/process_weather.py\", \"...\"],\n        \"syntax_errors\": []\n      },\n      {\n        \"check_id\": \"spark_config\",\n        \"check_name\": \"Spark Configuration Check\",\n        \"status\": \"pass\" | \"fail\",\n        \"details\": \"Configuration is valid\",\n        \"issues_found\": []\n      },\n      {\n        \"check_id\": \"db_compatibility\",\n        \"check_name\": \"Database Schema Compatibility\",\n        \"status\": \"pass\" | \"fail\",\n        \"details\": \"Schema references are correct\",\n        \"mismatches\": []\n      },\n      {\n        \"check_id\": \"processing_logic\",\n        \"check_name\": \"Data Processing Logic\",\n        \"status\": \"pass\" | \"fail\",\n        \"details\": \"Logic appears sound\",\n        \"concerns\": []\n      }\n    ],\n    \"errors\": [\n      {\n        \"severity\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"location\": \"src/spark/process_weather.py:45\",\n        \"message\": \"Error description\",\n        \"suggestion\": \"How to fix\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"location\": \"config/spark_config.py\",\n        \"message\": \"Warning description\",\n        \"recommendation\": \"Best practice suggestion\"\n      }\n    ],\n    \"statistics\": {\n      \"total_checks\": 8,\n      \"passed\": 7,\n      \"failed\": 0,\n      \"warnings\": 1,\n      \"files_validated\": 3,\n      \"lines_of_code\": 250\n    },\n    \"proceed_to_next_agent\": true | false,\n    \"next_agent\": \"execute_webapp_agent\" | \"error_handler_spark\",\n    \"execution_time\": \"15s\",\n    \"recommendations\": [\n      \"Consider adding unit tests for aggregation functions\",\n      \"Add logging statements for debugging\"\n    ]\n  }\n\n  ## Critical Rules:\n\n  1. Set \"validation_status\" to:\n     - \"pass\" if ALL critical checks pass (minor warnings OK)\n     - \"fail\" if ANY critical check fails\n     - \"partial\" if some checks couldn't be performed\n\n  2. Set \"proceed_to_next_agent\" to:\n     - true ONLY if validation_status is \"pass\"\n     - false if \"fail\" or \"partial\"\n\n  3. Be thorough but practical - don't require perfection, focus on:\n     - Files exist and have valid syntax\n     - Database integration will work\n     - No critical logical errors\n\n  4. Save validation report to: VALIDATION_REPORT_SPARK.json\n\n  Remember: Your validation determines if the workflow continues or stops.\n  Be accurate and helpful.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "validate_spark_output",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "ifelse-1770202793865",
+      "type": "ifElse",
+      "name": "check_spark_validation",
+      "position": {
+        "x": 2460,
+        "y": -405
+      },
+      "data": {
+        "evaluationTarget": "proceed_to_next_agent == true",
+        "branches": [
+          {
+            "label": "True",
+            "condition": "When condition is true",
+            "id": "ifelse_0_1770202793867"
+          },
+          {
+            "label": "False",
+            "condition": "When condition is false",
+            "id": "ifelse_1_1770202793867"
+          }
+        ],
+        "outputPorts": 2,
+        "name": "check_spark_validation"
+      }
+    },
+    {
+      "id": "agent-1770202862210",
+      "type": "subAgent",
+      "name": "error_handler_spark",
+      "position": {
+        "x": 2685,
+        "y": -285
+      },
+      "data": {
+        "description": "error handler spark sub-agent",
+        "prompt": "You are an error handler for Spark validation failures.\n\n## Task\nSpark Agent validation FAILED. Generate error report and stop workflow.\n\n## Steps\n\n### 1. Read Validation Report\nRead: VALIDATION_REPORT_SPARK.json\nExtract errors, identify root causes.\n\n### 2. Create Error Report: ERROR_REPORT_SPARK.md\n\nStructure:\n```markdown\n# Spark Validation Failed\n\n## Summary\n- Component: Apache Spark processing\n- Errors: [count by severity]\n- Files: [affected files]\n\n## Critical Errors\n\n### Error #1: [Title]\n**Location:** src/spark/process_weather.py:67\n**Problem:** [What's wrong]\n**Impact:** [Why it matters]\n**Fix:**\n```python\n# Replace this:\ndf.read()  # Missing options\n\n# With this:\ndf.read.format(\"jdbc\") \\\n  .option(\"url\", db_url) \\\n  .load()\n```\n**Test:** spark-submit --dry-run src/spark/process_weather.py\n\n[Repeat for each error]\n\n## What Works / What's Broken\n✅ Files created correctly\n✅ Basic structure valid\n❌ JDBC configuration missing\n❌ Schema mismatch with database\n\n## Fix Instructions\n\n### Phase 1: Configuration (30 min)\n1. Open config/spark_config.py\n2. Add JDBC driver path\n3. Set connection parameters\n4. Test: python config/spark_config.py\n\n### Phase 2: Schema Alignment (45 min)\n1. Compare with src/database/schema.sql\n2. Update DataFrame schema in process_weather.py\n3. Test: spark-submit process_weather.py\n\n### Phase 3: Re-validate (15 min)\n```bash\nclaude run-command spark-agent-workflow\n```\n\n## Quick Reference\n| Error | Fix Time | Priority |\n|-------|----------|----------|\n| Missing JDBC | 20 min | Critical |\n| Schema mismatch | 30 min | Critical |\n| Config incomplete | 15 min | High |\n\n## Resume\nAfter fixes: claude run-command master-orchestrator\nSelect \"No\" for DB setup (already complete)\n```\n\n### 3. Log Error\nSave: error_logs/spark_error_[timestamp].json\nInclude: error count, severity, files affected, workflow status.\n\n### 4. Notify User\n```\n⚠️ SPARK VALIDATION FAILED\n\nCritical issues: 2\nReport: ERROR_REPORT_SPARK.md\n\nEstimated fix: 2-3 hours\n\nNext: Fix errors, then re-run orchestrator\n```\n\n### 5. Stop Workflow\n```json\n{\n  \"workflow_status\": \"stopped\",\n  \"stop_reason\": \"spark_validation_failed\",\n  \"completion_percentage\": 50,\n  \"can_resume_from\": \"spark_agent\"\n}\n```\n\n## Rules\n- Prioritize critical errors\n- Focus on Spark-specific issues (config, schema, JDBC)\n- Provide exact fixes with code\n- Link errors to database schema when relevant\n- Keep fix times realistic",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "error_handler_spark",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770202986750",
+      "type": "subAgent",
+      "name": "execute_webapp_agent",
+      "position": {
+        "x": 2685,
+        "y": -450
+      },
+      "data": {
+        "description": "execute webapp agent sub-agent",
+        "prompt": "You are the WebApp Agent execution coordinator.\n\n  Your task is to execute the webapp-agent-workflow and pass necessary context\n  from previous agents.\n\n  ## Context from Previous Agents\n\n  You have access to outputs from:\n  1. Database Agent (if executed):\n     - Database schema: src/database/schema.sql\n     - Connection config: config/database.py\n     - Table structures and field names\n\n  2. Spark Agent:\n     - Data processing scripts: src/spark/process_weather.py\n     - Aggregation logic: src/spark/aggregate_weather.py\n     - Output data format (what the API will consume)\n\n  ## Your Execution Steps\n\n  ### 1. Gather Context\n\n  Read and summarize:\n  - Database schema (table names, columns, data types)\n  - Spark output format (what data is available for the API)\n  - Any configuration files (connection details, ports, etc.)\n\n  Create a context file: .context/webapp_context.json\n````json\n  {\n    \"database\": {\n      \"tables\": [\"weather_data\", \"aggregated_weather\"],\n      \"connection\": {\n        \"from_file\": \"config/database.py\"\n      },\n      \"schema_summary\": \"weather_data(timestamp, location, temp, humidity, pressure)\"\n    },\n    \"spark_output\": {\n      \"format\": \"aggregated by hour/day\",\n      \"available_metrics\": [\"avg_temp\", \"min_temp\", \"max_temp\", \"humidity\"],\n      \"time_ranges\": \"historical + current\"\n    },\n    \"requirements\": {\n      \"api_endpoints\": [\"current\", \"historical\", \"stats\"],\n      \"frontend_features\": [\"chart\", \"table\", \"stats cards\"],\n      \"real_time\": false\n    }\n  }\n````\n\n  ### 2. Prepare Execution Command\n\n  Build the command with context:\n````bash\n  # Set environment variables with context\n  export DB_SCHEMA_PATH=\"src/database/schema.sql\"\n  export SPARK_OUTPUT_INFO=\".context/webapp_context.json\"\n  \n  # Execute the WebApp agent\n  claude run-command webapp-agent-workflow\n````\n\n  ### 3. Pass Context to WebApp Agent\n\n  When the webapp-agent-workflow prompts for requirements, provide:\n````\n  Create Flask REST API and React dashboard with:\n\n  Requirements:\n  - API endpoints for current weather, historical data, and statistics\n  - React dashboard with temperature charts, stats cards, historical view\n  - Integration with TimescaleDB (schema in src/database/schema.sql)\n  - Consume data from Spark aggregations (format in .context/webapp_context.json)\n  - Responsive design for mobile\n\n  Database Schema:\n  {{content from src/database/schema.sql}}\n\n  Spark Output Format:\n  {{content from .context/webapp_context.json}}\n````\n\n  ### 4. Monitor Execution\n\n  Track the WebApp agent's progress:\n  - Flask API creation\n  - React component generation\n  - Visualization setup\n  - Testing configuration\n\n  Log each step to: logs/webapp_execution.log\n\n  ### 5. Capture Outputs\n\n  Monitor for these expected outputs:\n  - src/webapp/app.py (Flask API)\n  - src/webapp/requirements.txt (Python dependencies)\n  - src/webapp/.env.example (environment config)\n  - src/webapp/frontend/src/App.js (React main component)\n  - src/webapp/frontend/src/components/*.js (React components)\n  - src/webapp/frontend/package.json (Node dependencies)\n  - tests/test_api.py (API tests)\n\n  ### 6. Verify File Creation\n\n  After execution completes, check:\n````bash\n  # Backend files\n  ls -la src/webapp/\n  \n  # Frontend files\n  ls -la src/webapp/frontend/src/\n  \n  # Test files\n  ls -la tests/\n````\n\n  Count files created: `find src/webapp -type f | wc -l`\n\n  ### 7. Quick Syntax Check\n\n  Perform basic validation:\n````bash\n  # Check Flask app syntax\n  python -m py_compile src/webapp/app.py\n  \n  # Check React syntax (if Node.js available)\n  cd src/webapp/frontend && npm run build --dry-run\n````\n\n  ### 8. Generate Execution Report\n\n  Output detailed JSON status:\n````json\n  {\n    \"agent\": \"execute_webapp_agent\",\n    \"status\": \"success\" | \"error\" | \"partial\",\n    \"execution_time\": \"8m 45s\",\n    \"context_provided\": {\n      \"db_schema\": true,\n      \"spark_output_format\": true,\n      \"requirements\": true\n    },\n    \"files_created\": [\n      \"src/webapp/app.py\",\n      \"src/webapp/requirements.txt\",\n      \"src/webapp/.env.example\",\n      \"src/webapp/frontend/src/App.js\",\n      \"src/webapp/frontend/src/components/WeatherChart.js\",\n      \"src/webapp/frontend/src/components/StatsCards.js\",\n      \"src/webapp/frontend/src/components/HistoricalView.js\",\n      \"src/webapp/frontend/src/services/api.js\",\n      \"src/webapp/frontend/package.json\",\n      \"tests/test_api.py\",\n      \"tests/conftest.py\"\n    ],\n    \"file_statistics\": {\n      \"total_files\": 11,\n      \"python_files\": 3,\n      \"javascript_files\": 7,\n      \"config_files\": 1,\n      \"total_lines\": 850\n    },\n    \"components_created\": {\n      \"backend\": {\n        \"flask_app\": true,\n        \"api_endpoints\": 3,\n        \"database_integration\": true,\n        \"cors_enabled\": true,\n        \"swagger_docs\": true\n      },\n      \"frontend\": {\n        \"react_app\": true,\n        \"components\": 4,\n        \"api_client\": true,\n        \"charts\": true,\n        \"responsive\": true\n      },\n      \"testing\": {\n        \"api_tests\": true,\n        \"frontend_tests\": false,\n        \"integration_tests\": false\n      }\n    },\n    \"syntax_check\": {\n      \"python\": \"passed\" | \"failed\",\n      \"javascript\": \"passed\" | \"failed\" | \"skipped\",\n      \"errors_found\": []\n    },\n    \"errors\": [],\n    \"warnings\": [\n      \"Frontend tests not created - consider adding\",\n      \"Environment variables need to be configured in .env\"\n    ],\n    \"next_agent\": \"validate_webapp_output\",\n    \"recommendations\": [\n      \"Configure .env file with database credentials\",\n      \"Install Python dependencies: pip install -r src/webapp/requirements.txt\",\n      \"Install Node dependencies: cd src/webapp/frontend && npm install\",\n      \"Review API documentation in Swagger UI after starting Flask\"\n    ]\n  }\n````\n\n  ## Error Handling\n\n  If webapp-agent-workflow fails:\n  1. Capture the error message\n  2. Check if it's a dependency issue (missing context)\n  3. Set status to \"error\"\n  4. Include error details in output JSON\n  5. Do NOT proceed to validation - let orchestrator handle error\n\n  ## Critical Rules:\n\n  1. Always pass context from previous agents\n  2. Verify context files exist before execution\n  3. Monitor execution continuously\n  4. Capture all outputs accurately\n  5. Provide detailed status for debugging\n  6. Save execution log for troubleshooting\n\n  Remember: The WebApp agent depends on DB and Spark outputs being correct.\n  Your job is to bridge these components seamlessly.",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "execute_webapp_agent",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "agent-1770203128693",
+      "type": "subAgent",
+      "name": "validate_webapp_output",
+      "position": {
+        "x": 3030,
+        "y": -495
+      },
+      "data": {
+        "description": "validate webapp output sub-agent",
+        "prompt": "You are a validation specialist for full-stack web applications.\n\n  Your task is to thoroughly validate all outputs from the WebApp Agent execution.\n\n  ## Validation Checklist\n\n  ### 1. Backend Validation (Flask API)\n\n  #### File Existence\n  Check these files exist:\n  - src/webapp/app.py\n  - src/webapp/requirements.txt\n  - src/webapp/.env.example\n\n  #### Flask App Structure\n  Review src/webapp/app.py for:\n  - Flask app initialization\n  - CORS configuration\n  - API endpoints defined:\n    * GET /api/weather/current\n    * GET /api/weather/historical\n    * GET /api/weather/stats\n  - Database connection setup\n  - Error handling (try/except blocks)\n  - Proper HTTP status codes\n\n  #### Python Syntax\n````bash\n  python -m py_compile src/webapp/app.py\n  python -m py_compile src/webapp/**/*.py\n````\n\n  #### Dependencies Check\n  Verify requirements.txt includes:\n  - flask (>=2.3.0)\n  - flask-cors (>=4.0.0)\n  - psycopg2-binary (for PostgreSQL)\n  - Any other necessary packages\n\n  #### Database Integration\n  Check that app.py:\n  - Imports database config from config/database.py\n  - Uses correct table names (match schema.sql)\n  - Handles database errors gracefully\n  - Closes connections properly\n\n  #### API Documentation\n  Check for Swagger/OpenAPI documentation:\n  - Flask-RESTX or similar library used\n  - API endpoints documented\n  - Request/response schemas defined\n\n  ### 2. Frontend Validation (React)\n\n  #### File Structure\n  Verify directory structure:\n````\n  src/webapp/frontend/\n  ├── public/\n  │   └── index.html\n  ├── src/\n  │   ├── App.js\n  │   ├── components/\n  │   │   ├── WeatherChart.js\n  │   │   ├── StatsCards.js\n  │   │   └── HistoricalView.js\n  │   └── services/\n  │       └── api.js\n  └── package.json\n````\n\n  #### React Components\n  For each component file, check:\n  - Valid JSX syntax\n  - Proper imports\n  - Component exports (default or named)\n  - Props handling\n  - State management (useState, useEffect)\n\n  #### Package.json\n  Verify includes:\n  - react (^18.0.0+)\n  - recharts (for charts)\n  - axios (for API calls)\n  - Build scripts: `start`, `build`, `test`\n\n  #### API Integration\n  Check src/services/api.js:\n  - Axios instance configured\n  - Base URL set to Flask API\n  - Error handling\n  - Request/response interceptors\n  - All API endpoints covered\n\n  #### JavaScript Syntax (if Node.js available)\n````bash\n  cd src/webapp/frontend\n  npm install --dry-run\n  # Check for dependency conflicts\n````\n\n  ### 3. Testing Validation\n\n  #### Backend Tests\n  Check tests/test_api.py:\n  - Pytest framework used\n  - Tests for each API endpoint\n  - Database mocking/fixtures\n  - Error case testing\n  - Proper assertions\n\n  #### Test Configuration\n  Verify tests/conftest.py:\n  - Pytest fixtures defined\n  - Test database setup\n  - Cleanup functions\n\n  ### 4. Configuration Validation\n\n  #### Environment Template\n  Check .env.example includes:\n  - Database connection parameters\n  - Flask secret key placeholder\n  - API port configuration\n  - CORS allowed origins\n  - Debug mode setting\n\n  #### Port Conflicts\n  Verify default ports don't conflict:\n  - Flask: 5000 (or configured port)\n  - React: 3000 (or configured port)\n\n  ### 5. Integration Check\n\n  #### Data Flow Validation\n  Verify the complete flow:\n````\n  Database → Flask API → React Frontend\n````\n\n  Check:\n  - Flask queries correct database tables\n  - API response format matches React expectations\n  - Frontend correctly parses API responses\n  - Error states handled at each level\n\n  #### Cross-Component Compatibility\n  - React API calls match Flask endpoints\n  - Data types consistent across stack\n  - Date/time formats compatible\n  - No hardcoded values (use env variables)\n\n  ### 6. Best Practices Check\n\n  Check for:\n  - ✅ Proper error handling (not just console.log)\n  - ✅ Environment variables used (not hardcoded values)\n  - ✅ CORS properly configured\n  - ✅ Input validation on API\n  - ✅ SQL injection prevention\n  - ✅ React keys on list items\n  - ✅ Responsive design considerations\n  - ✅ Accessibility (ARIA labels, semantic HTML)\n\n  ## Validation Execution\n\n  Run these commands (if tools available):\n````bash\n  # Python validation\n  cd src/webapp\n  python -m py_compile app.py\n  pip install -r requirements.txt --dry-run\n  pytest tests/ --collect-only  # Just check test discovery\n\n  # Frontend validation (if Node.js available)\n  cd src/webapp/frontend\n  npm install\n  npm run build\n  npm test -- --passWithNoTests\n````\n\n  ## Output Format\n\n  Generate comprehensive JSON validation report:\n````json\n  {\n    \"validation_status\": \"pass\" | \"fail\" | \"partial\",\n    \"timestamp\": \"2024-01-15T11:00:00Z\",\n    \"component_results\": {\n      \"backend\": {\n        \"status\": \"pass\" | \"fail\",\n        \"checks_passed\": 8,\n        \"checks_failed\": 0,\n        \"details\": {\n          \"files_exist\": true,\n          \"flask_structure\": true,\n          \"python_syntax\": true,\n          \"dependencies\": true,\n          \"db_integration\": true,\n          \"api_endpoints\": true,\n          \"error_handling\": true,\n          \"documentation\": true\n        }\n      },\n      \"frontend\": {\n        \"status\": \"pass\" | \"fail\",\n        \"checks_passed\": 7,\n        \"checks_failed\": 0,\n        \"details\": {\n          \"file_structure\": true,\n          \"react_components\": true,\n          \"package_json\": true,\n          \"api_integration\": true,\n          \"syntax_valid\": true,\n          \"dependencies\": true,\n          \"responsive\": true\n        }\n      },\n      \"testing\": {\n        \"status\": \"pass\" | \"fail\",\n        \"checks_passed\": 3,\n        \"checks_failed\": 0,\n        \"details\": {\n          \"test_files_exist\": true,\n          \"pytest_configured\": true,\n          \"test_coverage\": \"partial\"\n        }\n      },\n      \"integration\": {\n        \"status\": \"pass\" | \"fail\",\n        \"checks_passed\": 4,\n        \"checks_failed\": 0,\n        \"details\": {\n          \"data_flow\": true,\n          \"api_compatibility\": true,\n          \"no_port_conflicts\": true,\n          \"env_configured\": true\n        }\n      }\n    },\n    \"files_validated\": {\n      \"backend\": [\"src/webapp/app.py\", \"src/webapp/requirements.txt\", \"...\"],\n      \"frontend\": [\"src/webapp/frontend/src/App.js\", \"...\"],\n      \"tests\": [\"tests/test_api.py\", \"tests/conftest.py\"],\n      \"total_count\": 11\n    },\n    \"errors\": [\n      {\n        \"severity\": \"critical\" | \"high\" | \"medium\" | \"low\",\n        \"component\": \"backend\" | \"frontend\" | \"testing\" | \"integration\",\n        \"location\": \"src/webapp/app.py:67\",\n        \"message\": \"Missing error handling for database connection\",\n        \"suggestion\": \"Add try/except around database.connect()\",\n        \"code_snippet\": \"conn = database.connect()  # No error handling\"\n      }\n    ],\n    \"warnings\": [\n      {\n        \"component\": \"frontend\",\n        \"message\": \"Frontend tests not implemented\",\n        \"recommendation\": \"Add React component tests using @testing-library/react\",\n        \"priority\": \"medium\"\n      },\n      {\n        \"component\": \"backend\",\n        \"message\": \"API rate limiting not configured\",\n        \"recommendation\": \"Consider adding Flask-Limiter for production\",\n        \"priority\": \"low\"\n      }\n    ],\n    \"statistics\": {\n      \"total_checks\": 25,\n      \"passed\": 22,\n      \"failed\": 0,\n      \"warnings\": 3,\n      \"files_validated\": 11,\n      \"total_lines_of_code\": 850,\n      \"backend_loc\": 250,\n      \"frontend_loc\": 600\n    },\n    \"readiness\": {\n      \"development\": \"ready\",\n      \"testing\": \"ready\",\n      \"production\": \"needs_review\",\n      \"blockers\": []\n    },\n    \"proceed_to_next_agent\": true | false,\n    \"next_agent\": \"final_validation\" | \"error_handler_webapp\",\n    \"execution_time\": \"22s\",\n    \"recommendations\": [\n      \"Add environment-specific configurations (dev, staging, prod)\",\n      \"Implement API authentication/authorization\",\n      \"Add request validation middleware\",\n      \"Create Docker containerization\",\n      \"Set up CI/CD pipeline\",\n      \"Add monitoring and logging\",\n      \"Write integration tests\",\n      \"Add frontend error boundaries\"\n    ],\n    \"quick_start_verified\": {\n      \"can_install_backend\": true,\n      \"can_install_frontend\": true,\n      \"can_run_tests\": true,\n      \"database_connection_ready\": true,\n      \"port_availability\": true\n    }\n  }\n````\n\n  ## Critical Rules\n\n  1. Set \"validation_status\" to:\n     - \"pass\" if all CRITICAL checks pass (warnings OK)\n     - \"fail\" if ANY critical check fails\n     - \"partial\" if some checks couldn't be performed (missing tools)\n\n  2. Set \"proceed_to_next_agent\" to:\n     - true ONLY if validation_status is \"pass\"\n     - false if \"fail\" or critical errors in \"partial\"\n\n  3. Be practical:\n     - Focus on functionality over perfection\n     - Warnings don't block progression\n     - Missing nice-to-haves (tests, docs) noted but not blocking\n\n  4. Validate integration carefully:\n     - This is the FINAL agent before deployment\n     - Ensure DB → API → Frontend flow works\n     - Check no configuration mismatches\n\n  5. Save validation report to: VALIDATION_REPORT_WEBAPP.json\n\n  Remember: This is the last validation before the system is declared complete.\n  Be thorough but fair - the goal is working software, not perfect software.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "validate_webapp_output",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "ifelse-1770203224918",
+      "type": "ifElse",
+      "name": "check_webapp_validation",
+      "position": {
+        "x": 3375,
+        "y": -600
+      },
+      "data": {
+        "evaluationTarget": "proceed_to_next_agent == true",
+        "branches": [
+          {
+            "label": "True",
+            "condition": "When condition is true",
+            "id": "ifelse_0_1770203224920"
+          },
+          {
+            "label": "False",
+            "condition": "When condition is false",
+            "id": "ifelse_1_1770203224920"
+          }
+        ],
+        "outputPorts": 2,
+        "name": "check_webapp_validation"
+      }
+    },
+    {
+      "id": "agent-1770203290457",
+      "type": "subAgent",
+      "name": "final_validation",
+      "position": {
+        "x": 3615,
+        "y": -660
+      },
+      "data": {
+        "description": "final validation sub-agent",
+        "prompt": "Perform final system validation.\n\nCheck:\n1. All components integrate correctly\n2. DB → Spark connection works\n3. Spark → WebApp data flow works\n4. No missing dependencies\n5. All tests pass\n\nRun integration tests if available.\n\nOutput final validation report.",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "final_validation",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "agent-1770203370217",
+      "type": "subAgent",
+      "name": "report_generator",
+      "position": {
+        "x": 3960,
+        "y": -720
+      },
+      "data": {
+        "description": "report generator sub-agent",
+        "prompt": "Generate comprehensive project report.\n\nInclude:\n1. Executive Summary\n   - What was built\n   - Components created\n   - Total execution time\n\n2. Files Created\n   - List all files with descriptions\n   - Directory structure\n\n3. Agent Execution Summary\n   - Each agent's status\n   - Validation results\n   - Any warnings\n\n4. Next Steps for User\n   - How to run the database\n   - How to start Spark\n   - How to launch WebApp\n   - Testing instructions\n\n5. Troubleshooting Guide\n   - Common issues\n   - Solutions\n\n6. Architecture Diagram (ASCII)\n\nOutput to: PROJECT_REPORT.md\n\nMake it comprehensive, professional, and user-friendly.",
+        "model": "opus",
+        "outputPorts": 1,
+        "name": "report_generator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "prompt-1770203500570",
+      "type": "prompt",
+      "name": "skip_db_message",
+      "position": {
+        "x": 870,
+        "y": 210
+      },
+      "data": {
+        "label": "skip db message",
+        "prompt": "Database setup skipped. Proceeding with Spark and WebApp agents only.\n\nNote: Ensure your database is already configured at:\n- Host: {{db_host}}\n- Database: {{db_name}}\n- Schema: {{db_schema}}\"\n\nVariables: db_host, db_name, db_schema",
+        "variables": {},
+        "name": "skip_db_message"
+      }
+    },
+    {
+      "id": "agent-1770203820754",
+      "type": "subAgent",
+      "name": "error_handler_webapp",
+      "position": {
+        "x": 3615,
+        "y": -465
+      },
+      "data": {
+        "description": "error handler webapp sub-agent",
+        "prompt": "You are an error handler for full-stack WebApp validation failures.\n\n## Task\nWebApp Agent validation FAILED at final checkpoint. Create comprehensive error report.\n\n## Steps\n\n### 1. Analyze Failure\nRead: VALIDATION_REPORT_WEBAPP.json\nCategorize: Backend (Flask), Frontend (React), Integration, Config errors.\n\n### 2. Generate Report: ERROR_REPORT_WEBAPP.md\n\n```markdown\n# WebApp Validation Failed - Final Checkpoint\n\n## Summary\nComponent: Flask + React\nStatus: DEPLOYMENT BLOCKED\nErrors: [count by component]\n\n## Backend Errors (Flask)\n\n### Error #1: Database Connection\n**File:** src/webapp/app.py:67\n**Problem:** No error handling on db.connect()\n**Fix:**\n```python\ntry:\n    conn = database.connect()\nexcept Exception as e:\n    app.logger.error(f\"DB failed: {e}\")\n    raise\n```\n**Test:** python src/webapp/app.py\n\n## Frontend Errors (React)\n\n### Error #2: API URL Hardcoded\n**File:** src/services/api.js:12\n**Fix:**\n```javascript\nconst API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001';\n```\nAdd to .env: REACT_APP_API_URL=http://localhost:5001\n\n## Integration Errors\n\n### Error #3: Timestamp Format Mismatch\n**Problem:** API sends Unix timestamps, React expects ISO strings\n**Fix (Backend):**\n```python\ndef serialize_datetime(dt):\n    return dt.isoformat()\n```\n**Test:** curl http://localhost:5001/api/weather/current\n\n## Impact\n✅ Database works\n✅ Spark works\n❌ Flask won't start reliably\n❌ Frontend can't reach API\n❌ Data format incompatible\n\n## Fix Plan (3 hours)\n\n### Backend (1 hour)\n- [ ] Add error handling (30 min)\n- [ ] Fix port conflicts (15 min)\n- [ ] Test startup (15 min)\n\n### Frontend (1 hour)\n- [ ] Use env variables (15 min)\n- [ ] Update API client (30 min)\n- [ ] Test API calls (15 min)\n\n### Integration (1 hour)\n- [ ] Standardize timestamps (30 min)\n- [ ] End-to-end test (20 min)\n- [ ] Validation check (10 min)\n\n## Validation Steps\n```bash\n# 1. Fix files\n# 2. Test locally\ncd src/webapp && flask run\ncd frontend && npm start\n\n# 3. Re-validate\nclaude run-command master-orchestrator\n```\n\n## Quick Reference\n| Component | Errors | Priority | Time |\n|-----------|--------|----------|------|\n| Backend | 1 | Critical | 30m |\n| Frontend | 1 | High | 15m |\n| Integration | 1 | Critical | 45m |\n```\n\n### 3. Create Fix Plan: WEBAPP_FIX_PLAN.md\n```markdown\n# Fix Checklist\n\n## Backend\n- [ ] E-WA-001: Add db error handling\n- [ ] Test Flask starts\n\n## Frontend  \n- [ ] E-WA-002: Env variable for API URL\n- [ ] Test API connection\n\n## Integration\n- [ ] E-WA-003: ISO 8601 timestamps\n- [ ] Test data flow\n\nSuccess: All checkboxes checked + validation passes\n```\n\n### 4. Log Error\nerror_logs/webapp_error_[timestamp].json\n```json\n{\n  \"timestamp\": \"[ISO]\",\n  \"agent\": \"webapp_agent\",\n  \"validation_stage\": \"final_checkpoint\",\n  \"error_summary\": {\n    \"critical\": 2,\n    \"high\": 1\n  },\n  \"estimated_fix_time\": \"3 hours\",\n  \"workflow_stopped\": true\n}\n```\n\n### 5. Notify User\n```\n🚨 WEBAPP VALIDATION FAILED - Final Checkpoint\n\nBackend: 1 critical\nFrontend: 1 high  \nIntegration: 1 critical\n\nReports:\n• ERROR_REPORT_WEBAPP.md (detailed)\n• WEBAPP_FIX_PLAN.md (checklist)\n\nEstimated: 3 hours\n\nResume: claude run-command master-orchestrator\n```\n\n### 6. Stop Workflow\n```json\n{\n  \"workflow_status\": \"stopped\",\n  \"stop_reason\": \"webapp_validation_failed\",\n  \"completion_percentage\": 85,\n  \"components_complete\": {\n    \"database\": \"complete\",\n    \"spark\": \"complete\",\n    \"webapp\": \"failed_validation\"\n  },\n  \"can_resume_from\": \"webapp_agent\"\n}\n```\n\n## Rules\n1. Categorize by component (Backend/Frontend/Integration)\n2. Exact locations (file:line)\n3. Code fixes, not descriptions\n4. Realistic time estimates\n5. Clear resume instructions\n\nThis is the final agent - be thorough but concise.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "error_handler_webapp",
+        "tools": "Read,Write"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "reactflow__edge-start-node-defaultout-prompt-1770201456002in",
+      "from": "start-node-default",
+      "to": "prompt-1770201456002",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-prompt-1770201456002out-agent-1770200345506input",
+      "from": "prompt-1770201456002",
+      "to": "agent-1770200345506",
+      "fromPort": "out",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770200345506output-agent-1770201718569input",
+      "from": "agent-1770200345506",
+      "to": "agent-1770201718569",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770201718569output-question-1770200452878input",
+      "from": "agent-1770201718569",
+      "to": "question-1770200452878",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-question-1770200452878branch-0-agent-1770200534074input",
+      "from": "question-1770200452878",
+      "to": "agent-1770200534074",
+      "fromPort": "branch-0",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770200534074output-agent-1770200577640input",
+      "from": "agent-1770200534074",
+      "to": "agent-1770200577640",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770200577640output-ifelse-1770202089040input",
+      "from": "agent-1770200577640",
+      "to": "ifelse-1770202089040",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770202089040branch-1-agent-1770202298823input",
+      "from": "ifelse-1770202089040",
+      "to": "agent-1770202298823",
+      "fromPort": "branch-1",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770202089040branch-0-agent-1770202421044input",
+      "from": "ifelse-1770202089040",
+      "to": "agent-1770202421044",
+      "fromPort": "branch-0",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770202421044output-agent-1770202533141input",
+      "from": "agent-1770202421044",
+      "to": "agent-1770202533141",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770202533141output-ifelse-1770202793865input",
+      "from": "agent-1770202533141",
+      "to": "ifelse-1770202793865",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770202793865branch-1-agent-1770202862210input",
+      "from": "ifelse-1770202793865",
+      "to": "agent-1770202862210",
+      "fromPort": "branch-1",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770202793865branch-0-agent-1770202986750input",
+      "from": "ifelse-1770202793865",
+      "to": "agent-1770202986750",
+      "fromPort": "branch-0",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770202986750output-agent-1770203128693input",
+      "from": "agent-1770202986750",
+      "to": "agent-1770203128693",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770203128693output-ifelse-1770203224918input",
+      "from": "agent-1770203128693",
+      "to": "ifelse-1770203224918",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770203224918branch-0-agent-1770203290457input",
+      "from": "ifelse-1770203224918",
+      "to": "agent-1770203290457",
+      "fromPort": "branch-0",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770203290457output-agent-1770203370217input",
+      "from": "agent-1770203290457",
+      "to": "agent-1770203370217",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-question-1770200452878branch-1-prompt-1770203500570in",
+      "from": "question-1770200452878",
+      "to": "prompt-1770203500570",
+      "fromPort": "branch-1",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-prompt-1770203500570out-agent-1770202421044input",
+      "from": "prompt-1770203500570",
+      "to": "agent-1770202421044",
+      "fromPort": "out",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770203370217output-end-node-defaultin",
+      "from": "agent-1770203370217",
+      "to": "end-node-default",
+      "fromPort": "output",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-ifelse-1770203224918branch-1-agent-1770203820754input",
+      "from": "ifelse-1770203224918",
+      "to": "agent-1770203820754",
+      "fromPort": "branch-1",
+      "toPort": "input"
+    }
+  ],
+  "createdAt": "2026-02-05T08:01:38.121Z",
+  "updatedAt": "2026-02-05T08:01:38.121Z",
+  "subAgentFlows": []
+}

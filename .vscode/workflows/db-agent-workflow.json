@@ -1,0 +1,161 @@
+{
+  "id": "workflow-1770194646498",
+  "name": "db-agent-workflow",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "start-node-default",
+      "type": "start",
+      "name": "start-node-default",
+      "position": {
+        "x": -135,
+        "y": -330
+      },
+      "data": {
+        "label": "Start"
+      }
+    },
+    {
+      "id": "end-node-default",
+      "type": "end",
+      "name": "end-node-default",
+      "position": {
+        "x": 1710,
+        "y": 105
+      },
+      "data": {
+        "label": "End"
+      }
+    },
+    {
+      "id": "agent-1770193963026",
+      "type": "subAgent",
+      "name": "db_schema_creator",
+      "position": {
+        "x": 345,
+        "y": -195
+      },
+      "data": {
+        "description": "db schema creator sub-agent",
+        "prompt": "You are a TimescaleDB expert specializing in time-series schema design.\n\nYour task:\n1. Create a SQL schema file with:\n   - weather_data table (timestamp, location, temp, humidity, pressure, etc.)\n   - Hypertable configuration\n   - Proper indexes\n   - Partitioning strategy\n\n2. Output to: src/database/schema.sql\n\nFollow PostgreSQL and TimescaleDB best practices.your prompt here",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "db_schema_creator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "prompt-1770194169427",
+      "type": "prompt",
+      "name": "db_requirements_input",
+      "position": {
+        "x": 15,
+        "y": -285
+      },
+      "data": {
+        "label": "db requirements input",
+        "prompt": "Create TimescaleDB database for weather data with the following requirements:\n\n{{requirements}}\n\nInclude:\n- Schema design for time-series weather data\n- Hypertable configuration\n- Indexes for efficient queries\n- Python ingestion script using psycopg2",
+        "variables": {},
+        "name": "db_requirements_input"
+      }
+    },
+    {
+      "id": "agent-1770194253580",
+      "type": "subAgent",
+      "name": "db_connection_config",
+      "position": {
+        "x": 690,
+        "y": -105
+      },
+      "data": {
+        "description": "db connection sub-agent",
+        "prompt": "Create Python database connection configuration.\n\nYour task:\n1. Create config/database.py with:\n   - Connection parameters (host, port, database, user, password)\n   - Connection pooling setup\n   - Error handling\n   - Environment variable support\n\n2. Use psycopg2 for PostgreSQL connection\n3. Add TimescaleDB-specific optimizations",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "db_connection_config",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770194347947",
+      "type": "subAgent",
+      "name": "data_ingestion_script",
+      "position": {
+        "x": 1050,
+        "y": -15
+      },
+      "data": {
+        "description": "data ingestion script",
+        "prompt": "Create Python script to ingest weather data from OpenWeatherMap API.\n\nYour task:\n1. Create src/database/ingest_weather.py with:\n   - Fetch data from OpenWeatherMap API\n   - Parse JSON response\n   - Insert into TimescaleDB\n   - Batch processing for efficiency\n   - Error handling and logging\n   - Schedule with cron capability\n\n2. Use schema from src/database/schema.sql\n3. Use connection from config/database.py",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "data_ingestion_script",
+        "tools": "Read,Write,Bash"
+      }
+    },
+    {
+      "id": "agent-1770194424428",
+      "type": "subAgent",
+      "name": "db_validation",
+      "position": {
+        "x": 1380,
+        "y": 60
+      },
+      "data": {
+        "description": "db validation",
+        "prompt": "Validate database setup and ingestion script.\n\nYour task:\n1. Check that schema.sql is valid SQL\n2. Verify connection config is properly formatted\n3. Test ingestion script syntax\n4. Generate validation report\n\nOutput JSON:\n{\n  \"status\": \"success|error\",\n  \"files_validated\": [...],\n  \"errors\": [...],\n  \"next_steps\": \"...\"\n}",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "db_validation",
+        "tools": "Read,Bash"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "reactflow__edge-prompt-1770194169427out-agent-1770193963026input",
+      "from": "prompt-1770194169427",
+      "to": "agent-1770193963026",
+      "fromPort": "out",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770193963026output-agent-1770194253580input",
+      "from": "agent-1770193963026",
+      "to": "agent-1770194253580",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194253580output-agent-1770194347947input",
+      "from": "agent-1770194253580",
+      "to": "agent-1770194347947",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-start-node-defaultout-prompt-1770194169427in",
+      "from": "start-node-default",
+      "to": "prompt-1770194169427",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194347947output-agent-1770194424428input",
+      "from": "agent-1770194347947",
+      "to": "agent-1770194424428",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194424428output-end-node-defaultin",
+      "from": "agent-1770194424428",
+      "to": "end-node-default",
+      "fromPort": "output",
+      "toPort": "in"
+    }
+  ],
+  "createdAt": "2026-02-04T08:44:06.498Z",
+  "updatedAt": "2026-02-04T08:44:06.498Z",
+  "subAgentFlows": []
+}

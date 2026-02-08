@@ -1,0 +1,137 @@
+{
+  "id": "workflow-1770195077591",
+  "name": "spark-agent-workflow",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "start-node-default",
+      "type": "start",
+      "name": "start-node-default",
+      "position": {
+        "x": -90,
+        "y": -15
+      },
+      "data": {
+        "label": "Start"
+      }
+    },
+    {
+      "id": "end-node-default",
+      "type": "end",
+      "name": "end-node-default",
+      "position": {
+        "x": 1395,
+        "y": 330
+      },
+      "data": {
+        "label": "End"
+      }
+    },
+    {
+      "id": "prompt-1770194724903",
+      "type": "prompt",
+      "name": "spark_requirements_input",
+      "position": {
+        "x": 60,
+        "y": 15
+      },
+      "data": {
+        "label": "spark requirements input",
+        "prompt": "Create Apache Spark processing pipeline with:\n\n{{requirements}}\n\nProcess data from TimescaleDB:\n- Schema: {{db_schema}}\n\nGenerate:\n- Spark configuration\n- PySpark data processing script\n- Hourly/daily aggregation jobs",
+        "variables": {},
+        "name": "spark_requirements_input"
+      }
+    },
+    {
+      "id": "agent-1770194795266",
+      "type": "subAgent",
+      "name": "spark_configurator",
+      "position": {
+        "x": 390,
+        "y": 105
+      },
+      "data": {
+        "description": "spark configurator sub-agent",
+        "prompt": "Configure Apache Spark environment for weather data processing.\n\nYour task:\n1. Create config/spark_config.py:\n   - Spark session configuration\n   - Memory settings (driver, executor)\n   - TimescaleDB JDBC connection\n   - Partitioning strategy\n\n2. Create docker-compose.yml for Spark:\n   - Spark master\n   - Spark worker\n   - TimescaleDB connection\n\nOutput optimized configs for weather time-series data.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "spark_configurator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770194872648",
+      "type": "subAgent",
+      "name": "spark_processor",
+      "position": {
+        "x": 720,
+        "y": 195
+      },
+      "data": {
+        "description": "spark processor sub-agent",
+        "prompt": "Create PySpark script for weather data processing.\n\nYour task:\n1. Create src/spark/process_weather.py:\n   - Read from TimescaleDB\n   - Data cleaning and validation\n   - Temperature unit conversions\n   - Missing data handling\n   - Write processed data back\n\n2. Use Spark DataFrame API\n3. Optimize for time-series data",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "spark_processor",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770194964009",
+      "type": "subAgent",
+      "name": "spark_aggregator",
+      "position": {
+        "x": 1050,
+        "y": 285
+      },
+      "data": {
+        "description": "spark aggregator sub-agent",
+        "prompt": "Create aggregation jobs for weather statistics.\n\nYour task:\n1. Create src/spark/aggregate_weather.py:\n   - Hourly aggregations (avg, min, max temp)\n   - Daily summaries\n   - Weekly trends\n   - Write to aggregated_weather table\n\n2. Use window functions efficiently\n3. Optimize for query performance",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "spark_aggregator",
+        "tools": "Read,Write"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "reactflow__edge-start-node-defaultout-prompt-1770194724903in",
+      "from": "start-node-default",
+      "to": "prompt-1770194724903",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-prompt-1770194724903out-agent-1770194795266input",
+      "from": "prompt-1770194724903",
+      "to": "agent-1770194795266",
+      "fromPort": "out",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194795266output-agent-1770194872648input",
+      "from": "agent-1770194795266",
+      "to": "agent-1770194872648",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194872648output-agent-1770194964009input",
+      "from": "agent-1770194872648",
+      "to": "agent-1770194964009",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770194964009output-end-node-defaultin",
+      "from": "agent-1770194964009",
+      "to": "end-node-default",
+      "fromPort": "output",
+      "toPort": "in"
+    }
+  ],
+  "createdAt": "2026-02-04T08:51:17.591Z",
+  "updatedAt": "2026-02-04T08:51:17.591Z",
+  "subAgentFlows": []
+}

@@ -1,0 +1,161 @@
+{
+  "id": "workflow-1770195945673",
+  "name": "webapp-agent-workflow",
+  "version": "1.0.0",
+  "nodes": [
+    {
+      "id": "start-node-default",
+      "type": "start",
+      "name": "start-node-default",
+      "position": {
+        "x": -435,
+        "y": -135
+      },
+      "data": {
+        "label": "Start"
+      }
+    },
+    {
+      "id": "end-node-default",
+      "type": "end",
+      "name": "end-node-default",
+      "position": {
+        "x": 1440,
+        "y": 195
+      },
+      "data": {
+        "label": "End"
+      }
+    },
+    {
+      "id": "prompt-1770195147978",
+      "type": "prompt",
+      "name": "webapp_requirements_input",
+      "position": {
+        "x": -270,
+        "y": -105
+      },
+      "data": {
+        "label": "webapp requirements input",
+        "prompt": "Create Flask REST API and React dashboard with the following requirements:\n\n{{requirements}}\n\nUse data from:\n- Database schema: {{db_schema}}\n- Processed data format: {{spark_output_format}}\n\nGenerate:\n- Flask REST API with endpoints\n- React dashboard components\n- Data visualizations\n- Testing setup\"\n\nVariables:\n- requirements\n- db_schema (optional)\n- spark_output_format (optional)",
+        "variables": {},
+        "name": "webapp_requirements_input"
+      }
+    },
+    {
+      "id": "agent-1770195153357",
+      "type": "subAgent",
+      "name": "flask_api_creator",
+      "position": {
+        "x": 75,
+        "y": -30
+      },
+      "data": {
+        "description": "flask api creator sub-agent",
+        "prompt": "You are a Flask API expert specializing in RESTful API design.\n\nYour task:\n1. Create src/webapp/app.py with:\n   - Flask application setup\n   - API endpoints:\n     * GET /api/weather/current - Current weather data\n     * GET /api/weather/historical?start=X&end=Y - Historical data range\n     * GET /api/weather/stats?period=hourly|daily - Aggregated statistics\n   - TimescaleDB connection using config/database.py\n   - CORS configuration for React frontend\n   - Error handling with proper HTTP status codes\n   - Request validation\n   - API documentation using Flask-RESTX/Swagger\n\n2. Create src/webapp/requirements.txt with:\n   - flask>=2.3.0\n   - flask-restx>=1.1.0\n   - flask-cors>=4.0.0\n   - psycopg2-binary>=2.9.0\n   - python-dotenv>=1.0.0\n\n3. Create src/webapp/.env.example:\n   - Database connection parameters\n   - API configuration\n   - CORS origins\n\n4. Implement response caching for performance\n5. Add rate limiting for API endpoints\n6. Include health check endpoint: GET /health\n\nFollow REST best practices and return proper JSON responses.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "flask_api_creator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770195232677",
+      "type": "subAgent",
+      "name": "react_dashboard_creator",
+      "position": {
+        "x": 420,
+        "y": 30
+      },
+      "data": {
+        "description": "react dashboard creator sub-agent",
+        "prompt": "You are a React frontend expert specializing in data visualization dashboards.\n\nYour task:\n1. Create src/webapp/frontend/ structure:\n   - public/index.html\n   - src/App.js (main component)\n   - src/components/WeatherChart.js (temperature trends)\n   - src/components/StatsCards.js (current conditions)\n   - src/components/HistoricalView.js (historical data table)\n   - src/components/LocationSelector.js (city selection)\n   - src/services/api.js (API client)\n   - src/utils/dateFormatter.js (date utilities)\n\n2. App.js implementation:\n   - State management with React hooks\n   - API data fetching on mount\n   - Error boundary\n   - Loading states\n   - Responsive layout (mobile-first)\n\n3. WeatherChart.js:\n   - Use Recharts library\n   - Line chart for temperature trends\n   - 7-day historical view\n   - Interactive tooltips\n   - Responsive sizing\n\n4. StatsCards.js:\n   - Current temperature\n   - Humidity percentage\n   - Wind speed\n   - Pressure\n   - Material-UI styled cards\n\n5. HistoricalView.js:\n   - Data table with sorting\n   - Pagination (20 rows per page)\n   - Date filtering\n   - Export to CSV functionality\n\n6. Create package.json with dependencies:\n   - react: ^18.2.0\n   - recharts: ^2.5.0\n   - axios: ^1.4.0\n   - @mui/material: ^5.13.0\n   - date-fns: ^2.30.0\n\n7. API integration:\n   - Axios instance with base URL\n   - Error handling\n   - Request interceptors\n   - Automatic retries\n\n8. Styling:\n   - CSS modules or styled-components\n   - Responsive breakpoints\n   - Dark mode support (optional)\n\nFollow React best practices and accessibility guidelines (WCAG 2.1).",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "react_dashboard_creator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770195703316",
+      "type": "subAgent",
+      "name": "visualization_configurator",
+      "position": {
+        "x": 765,
+        "y": 90
+      },
+      "data": {
+        "description": "visualization configurator sub-agent",
+        "prompt": "You are a data visualization expert focusing on weather data presentation.\n\nYour task:\n1. Create src/webapp/frontend/src/components/AdvancedCharts.js:\n   - Multi-line chart (temp, humidity, pressure)\n   - Bar chart for hourly comparisons\n   - Area chart for precipitation\n   - Heatmap for historical patterns\n\n2. Create src/webapp/frontend/src/components/Dashboard.js:\n   - Grid layout for multiple charts\n   - Real-time data updates (WebSocket or polling)\n   - Chart export functionality (PNG/SVG)\n   - Interactive legends\n   - Date range selector\n\n3. Visualization configurations:\n   - Color schemes (consistent across charts)\n   - Responsive sizing formulas\n   - Animation settings\n   - Tooltip formatters\n   - Axis configurations\n\n4. Create src/webapp/frontend/src/styles/charts.css:\n   - Chart container styles\n   - Legend styles\n   - Tooltip styles\n   - Responsive breakpoints\n\n5. Add accessibility features:\n   - ARIA labels\n   - Keyboard navigation\n   - Screen reader descriptions\n   - High contrast mode support\n\nUse Recharts advanced features and D3.js for custom visualizations if needed.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "visualization_configurator",
+        "tools": "Read,Write"
+      }
+    },
+    {
+      "id": "agent-1770195773936",
+      "type": "subAgent",
+      "name": "webapp_testing_setup",
+      "position": {
+        "x": 1110,
+        "y": 150
+      },
+      "data": {
+        "description": "webapp testing setup sub-agent",
+        "prompt": "You are a testing expert for full-stack web applications.\n\nYour task:\n1. Backend Testing (Flask):\n   - Create tests/test_api.py:\n     * Unit tests for each endpoint\n     * Test database connections\n     * Test error handling\n     * Test authentication (if implemented)\n   - Create tests/conftest.py:\n     * Pytest fixtures\n     * Test database setup\n     * Mock data generators\n   - Add to requirements.txt:\n     * pytest>=7.4.0\n     * pytest-flask>=1.2.0\n     * pytest-cov>=4.1.0\n\n2. Frontend Testing (React):\n   - Create src/webapp/frontend/src/__tests__/:\n     * App.test.js\n     * WeatherChart.test.js\n     * StatsCards.test.js\n     * api.test.js\n   - Use React Testing Library\n   - Mock API responses\n   - Test user interactions\n   - Add to package.json:\n     * @testing-library/react\n     * @testing-library/jest-dom\n     * jest\n\n3. Integration Testing:\n   - Create tests/integration/test_full_workflow.py:\n     * Test API → Database flow\n     * Test data transformation\n     * Test error scenarios\n   \n4. Create test documentation:\n   - tests/README.md with:\n     * How to run tests\n     * Test coverage requirements\n     * CI/CD integration guide\n\n5. Generate test commands:\n   Backend: pytest tests/ --cov=src/webapp\n   Frontend: npm test --coverage\n\nAll tests must achieve >80% code coverage.",
+        "model": "sonnet",
+        "outputPorts": 1,
+        "name": "webapp_testing_setup",
+        "tools": "Read,Write,Bash"
+      }
+    }
+  ],
+  "connections": [
+    {
+      "id": "reactflow__edge-start-node-defaultout-prompt-1770195147978in",
+      "from": "start-node-default",
+      "to": "prompt-1770195147978",
+      "fromPort": "out",
+      "toPort": "in"
+    },
+    {
+      "id": "reactflow__edge-prompt-1770195147978out-agent-1770195153357input",
+      "from": "prompt-1770195147978",
+      "to": "agent-1770195153357",
+      "fromPort": "out",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770195153357output-agent-1770195232677input",
+      "from": "agent-1770195153357",
+      "to": "agent-1770195232677",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770195232677output-agent-1770195703316input",
+      "from": "agent-1770195232677",
+      "to": "agent-1770195703316",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770195703316output-agent-1770195773936input",
+      "from": "agent-1770195703316",
+      "to": "agent-1770195773936",
+      "fromPort": "output",
+      "toPort": "input"
+    },
+    {
+      "id": "reactflow__edge-agent-1770195773936output-end-node-defaultin",
+      "from": "agent-1770195773936",
+      "to": "end-node-default",
+      "fromPort": "output",
+      "toPort": "in"
+    }
+  ],
+  "createdAt": "2026-02-04T09:05:45.673Z",
+  "updatedAt": "2026-02-04T09:05:45.673Z",
+  "subAgentFlows": []
+}

@@ -1,0 +1,30 @@
+.chart-container {
+  padding: 16px;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+.chart-tooltip {
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .chart-container {
+    padding: 12px;
+  }
+
+  .recharts-responsive-container {
+    min-height: 200px !important;
+  }
+}

@@ -18,7 +18,7 @@ DB_CONFIG = {
     "port": os.getenv("TIMESCALE_PORT", "5432"),
     "database": os.getenv("TIMESCALE_DB", "weather_db"),
     "user": os.getenv("TIMESCALE_USER", "weather_user"),
-    "password": os.getenv("TIMESCALE_PASSWORD", "weather_pass"),
+    "password": os.getenv("TIMESCALE_PASSWORD", "weather_pass_2024"),
 }
 
 

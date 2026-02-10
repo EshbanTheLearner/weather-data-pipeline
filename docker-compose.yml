@@ -1,0 +1,90 @@
+version: "3.8"
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: weather-timescaledb
+    restart: unless-stopped
+    ports:
+      - "${TIMESCALE_PORT:-5432}:5432"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-weather_db}
+      POSTGRES_USER: ${POSTGRES_USER:-weather_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-weather_pass_2024}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init/:/docker-entrypoint-initdb.d/
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-weather_user} -d ${POSTGRES_DB:-weather_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  spark:
+    build:
+      context: .
+      dockerfile: src/spark/Dockerfile
+    container_name: weather-spark
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    working_dir: /app
+    environment:
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: "5432"
+      TIMESCALE_DB: ${TIMESCALE_DB:-weather_db}
+      TIMESCALE_USER: ${TIMESCALE_USER:-weather_user}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-weather_pass_2024}
+    env_file:
+      - .env
+    command: >
+      bash -c "
+        pip install --no-cache-dir -r /app/src/spark/requirements.txt &&
+        curl -fSL https://jdbc.postgresql.org/download/postgresql-42.7.1.jar
+          -o /opt/bitnami/spark/jars/postgresql-42.7.1.jar 2>/dev/null;
+        echo 'Spark container ready. Run pipeline with:';
+        echo 'docker exec weather-spark spark-submit /app/src/spark/run_pipeline.py all';
+        tail -f /dev/null
+      "
+
+  flask-api:
+    build:
+      context: ./src/webapp
+      dockerfile: Dockerfile
+    container_name: weather-flask-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    environment:
+      TIMESCALE_HOST: timescaledb
+      TIMESCALE_PORT: "5432"
+      TIMESCALE_DB: ${TIMESCALE_DB:-weather_db}
+      TIMESCALE_USER: ${TIMESCALE_USER:-weather_user}
+      TIMESCALE_PASSWORD: ${TIMESCALE_PASSWORD:-weather_pass_2024}
+      FLASK_ENV: production
+      CORS_ORIGINS: "http://localhost:3000,http://localhost"
+    env_file:
+      - .env
+
+  react-frontend:
+    build:
+      context: ./src/webapp/frontend
+      dockerfile: Dockerfile
+    container_name: weather-react-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - flask-api
+
+volumes:
+  pgdata:
+    driver: local

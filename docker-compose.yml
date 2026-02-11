@@ -46,7 +46,7 @@ services:
       bash -c "
         pip install --no-cache-dir -r /app/src/spark/requirements.txt &&
         curl -fSL https://jdbc.postgresql.org/download/postgresql-42.7.1.jar
-          -o /opt/bitnami/spark/jars/postgresql-42.7.1.jar 2>/dev/null;
+          -o /opt/spark/jars/postgresql-42.7.1.jar 2>/dev/null;
         echo 'Spark container ready. Run pipeline with:';
         echo 'docker exec weather-spark spark-submit /app/src/spark/run_pipeline.py all';
         tail -f /dev/null

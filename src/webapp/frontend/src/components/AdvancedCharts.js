@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { Paper, Typography, Grid, Box, Skeleton } from '@mui/material';
 import { formatShortDate } from '../utils/dateFormatter';
+import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
 const COLORS = {
   temperature: '#1976d2',
@@ -42,10 +43,11 @@ function ChartWrapper({ title, loading, isEmpty, height = 280, children }) {
   );
 }
 
-export default function AdvancedCharts({ data, loading }) {
+export default function AdvancedCharts({ data, loading, temperatureUnit }) {
   const chartData = (data || []).map((d) => ({
     ...d,
     date: formatShortDate(d.bucket),
+    avg_temperature: convertTemp(d.avg_temperature, temperatureUnit),
   }));
 
   const empty = !data || data.length === 0;
@@ -68,12 +70,12 @@ export default function AdvancedCharts({ data, loading }) {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
               <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="temp" tick={{ fontSize: 11 }} label={{ value: '°C', position: 'insideLeft', offset: 10, fontSize: 11 }} />
+              <YAxis yAxisId="temp" tick={{ fontSize: 11 }} label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10, fontSize: 11 }} />
               <YAxis yAxisId="humid" orientation="right" tick={{ fontSize: 11 }} label={{ value: '%', position: 'insideRight', offset: 10, fontSize: 11 }} />
               <Tooltip
                 contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
                 formatter={(v, name) => {
-                  const u = name === 'avg_humidity' ? '%' : '°C';
+                  const u = name === 'avg_humidity' ? '%' : tempUnit(temperatureUnit);
                   return [`${Number(v).toFixed(1)} ${u}`, name === 'avg_humidity' ? 'Humidity' : 'Temperature'];
                 }}
               />

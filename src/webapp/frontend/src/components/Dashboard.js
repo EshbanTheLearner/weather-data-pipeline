@@ -8,7 +8,7 @@ import { fetchCurrentWeather, fetchTrends, fetchStats } from '../services/api';
 
 const REFRESH_INTERVAL = 60_000;
 
-export default function Dashboard({ selectedLocation }) {
+export default function Dashboard({ selectedLocation, temperatureUnit }) {
   const [currentWeather, setCurrentWeather] = useState(null);
   const [trends, setTrends] = useState([]);
   const [stats, setStats] = useState([]);
@@ -50,9 +50,9 @@ export default function Dashboard({ selectedLocation }) {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-      <StatsCards data={currentWeather} loading={loadingCurrent} />
+      <StatsCards data={currentWeather} loading={loadingCurrent} temperatureUnit={temperatureUnit} />
 
-      <WeatherChart data={trends} loading={loadingTrends} />
+      <WeatherChart data={trends} loading={loadingTrends} temperatureUnit={temperatureUnit} />
 
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography variant="subtitle2" color="text.secondary">
@@ -69,9 +69,9 @@ export default function Dashboard({ selectedLocation }) {
         </ToggleButtonGroup>
       </Stack>
 
-      <AdvancedCharts data={stats} loading={loadingStats} />
+      <AdvancedCharts data={stats} loading={loadingStats} temperatureUnit={temperatureUnit} />
 
-      <HistoricalView locationId={selectedLocation} />
+      <HistoricalView locationId={selectedLocation} temperatureUnit={temperatureUnit} />
     </Box>
   );
 }

@@ -5,8 +5,9 @@ import {
 } from 'recharts';
 import { Paper, Typography, Skeleton, Box } from '@mui/material';
 import { formatShortDate } from '../utils/dateFormatter';
+import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
-export default function WeatherChart({ data, loading }) {
+export default function WeatherChart({ data, loading, temperatureUnit }) {
   if (loading) {
     return (
       <Paper sx={{ p: 3 }}>
@@ -32,6 +33,9 @@ export default function WeatherChart({ data, loading }) {
   const chartData = data.map((d) => ({
     ...d,
     date: formatShortDate(d.date),
+    avg_temperature: convertTemp(d.avg_temperature, temperatureUnit),
+    min_temperature: convertTemp(d.min_temperature, temperatureUnit),
+    max_temperature: convertTemp(d.max_temperature, temperatureUnit),
   }));
 
   return (
@@ -45,7 +49,7 @@ export default function WeatherChart({ data, loading }) {
           <XAxis dataKey="date" tick={{ fontSize: 12 }} />
           <YAxis
             tick={{ fontSize: 12 }}
-            label={{ value: '°C', position: 'insideLeft', offset: 10 }}
+            label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10 }}
           />
           <Tooltip
             contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
@@ -55,7 +59,7 @@ export default function WeatherChart({ data, loading }) {
                 min_temperature: 'Min',
                 max_temperature: 'Max',
               };
-              return [`${Number(value).toFixed(1)} °C`, labels[name] || name];
+              return [`${Number(value).toFixed(1)} ${tempUnit(temperatureUnit)}`, labels[name] || name];
             }}
           />
           <Legend />

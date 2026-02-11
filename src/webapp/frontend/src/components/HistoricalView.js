@@ -7,8 +7,9 @@ import {
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { fetchHistorical } from '../services/api';
 import { formatDateTime, daysAgo } from '../utils/dateFormatter';
+import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
-export default function HistoricalView({ locationId }) {
+export default function HistoricalView({ locationId, temperatureUnit }) {
   const [rows, setRows] = useState([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
@@ -64,7 +65,7 @@ export default function HistoricalView({ locationId }) {
   const columns = [
     { id: 'timestamp', label: 'Timestamp', format: formatDateTime },
     { id: 'location_id', label: 'Location' },
-    { id: 'temperature', label: 'Temp (°C)', format: (v) => v?.toFixed(1) },
+    { id: 'temperature', label: `Temp (${tempUnit(temperatureUnit)})`, format: (v) => convertTemp(v, temperatureUnit)?.toFixed(1) },
     { id: 'humidity', label: 'Humidity (%)', format: (v) => v?.toFixed(1) },
     { id: 'pressure', label: 'Pressure (hPa)', format: (v) => v?.toFixed(0) },
     { id: 'wind_speed', label: 'Wind (m/s)', format: (v) => v?.toFixed(1) },

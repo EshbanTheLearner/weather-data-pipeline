@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   AppBar, Toolbar, Typography, Container,
   CssBaseline, Snackbar, Alert, ThemeProvider, createTheme,
+  ToggleButtonGroup, ToggleButton,
 } from '@mui/material';
 import CloudIcon from '@mui/icons-material/Cloud';
 import Dashboard from './components/Dashboard';
@@ -22,6 +23,7 @@ const theme = createTheme({
 export default function App() {
   const [locations, setLocations] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState('');
+  const [temperatureUnit, setTemperatureUnit] = useState('C');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -40,6 +42,16 @@ export default function App() {
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Weather Dashboard
           </Typography>
+          <ToggleButtonGroup
+            value={temperatureUnit}
+            exclusive
+            onChange={(_, v) => { if (v) setTemperatureUnit(v); }}
+            size="small"
+            sx={{ mr: 2, bgcolor: 'rgba(255,255,255,0.15)', '& .MuiToggleButton-root': { color: 'rgba(255,255,255,0.7)', '&.Mui-selected': { color: '#fff', bgcolor: 'rgba(255,255,255,0.25)' } } }}
+          >
+            <ToggleButton value="C">°C</ToggleButton>
+            <ToggleButton value="F">°F</ToggleButton>
+          </ToggleButtonGroup>
           <LocationSelector
             locations={locations}
             selectedLocation={selectedLocation}
@@ -49,7 +61,7 @@ export default function App() {
       </AppBar>
 
       <Container maxWidth="lg" sx={{ py: 3 }}>
-        <Dashboard selectedLocation={selectedLocation} />
+        <Dashboard selectedLocation={selectedLocation} temperatureUnit={temperatureUnit} />
       </Container>
 
       <Snackbar

@@ -1,4 +1,4 @@
-FROM bitnami/spark:3.5
+FROM apache/spark:latest
 
 USER root
 
@@ -8,9 +8,7 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Download PostgreSQL JDBC driver
 RUN curl -fSL https://jdbc.postgresql.org/download/postgresql-42.7.1.jar \
-    -o /opt/bitnami/spark/jars/postgresql-42.7.1.jar
-
-USER 1001
+    -o /opt/spark/jars/postgresql-42.7.1.jar
 
 WORKDIR /app
 

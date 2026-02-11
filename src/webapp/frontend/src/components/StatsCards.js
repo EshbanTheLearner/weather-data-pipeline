@@ -4,15 +4,16 @@ import ThermostatIcon from '@mui/icons-material/Thermostat';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
 import AirIcon from '@mui/icons-material/Air';
 import SpeedIcon from '@mui/icons-material/Speed';
+import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
-const cards = [
+const cards = (temperatureUnit) => [
   {
     key: 'temperature',
     label: 'Temperature',
-    unit: '°C',
+    unit: tempUnit(temperatureUnit),
     icon: ThermostatIcon,
     color: '#e53935',
-    format: (v) => (v != null ? v.toFixed(1) : '--'),
+    format: (v) => (v != null ? convertTemp(v, temperatureUnit).toFixed(1) : '--'),
   },
   {
     key: 'humidity',
@@ -40,10 +41,10 @@ const cards = [
   },
 ];
 
-export default function StatsCards({ data, loading }) {
+export default function StatsCards({ data, loading, temperatureUnit }) {
   return (
     <Grid container spacing={2}>
-      {cards.map(({ key, label, unit, icon: Icon, color, format }) => (
+      {cards(temperatureUnit).map(({ key, label, unit, icon: Icon, color, format }) => (
         <Grid item xs={12} sm={6} md={3} key={key}>
           <Card
             sx={{

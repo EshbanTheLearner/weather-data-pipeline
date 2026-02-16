@@ -44,7 +44,8 @@ SPARK_CONFIG = {
     # Shuffle partitions – keep low for moderate data volumes
     "spark.sql.shuffle.partitions": os.getenv("SPARK_SHUFFLE_PARTITIONS", "8"),
     # PostgreSQL JDBC driver JAR
-    "spark.jars.packages": "org.postgresql:postgresql:42.7.1",
+    "spark.jars": os.getenv("SPARK_JDBC_JAR", "/opt/spark/jars/postgresql-42.7.1.jar"),
+    "spark.driver.extraClassPath": os.getenv("SPARK_JDBC_JAR", "/opt/spark/jars/postgresql-42.7.1.jar"),
 }
 
 

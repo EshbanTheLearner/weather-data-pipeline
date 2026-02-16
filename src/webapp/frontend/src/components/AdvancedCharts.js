@@ -3,7 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, ComposedChart, Line, Bar,
 } from 'recharts';
-import { Paper, Typography, Grid, Box, Skeleton } from '@mui/material';
+import { Paper, Typography, Grid, Box, Skeleton, useTheme } from '@mui/material';
 import { formatShortDate } from '../utils/dateFormatter';
 import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
@@ -44,6 +44,13 @@ function ChartWrapper({ title, loading, isEmpty, height = 280, children }) {
 }
 
 export default function AdvancedCharts({ data, loading, temperatureUnit }) {
+  const theme = useTheme();
+  const darkMode = theme.palette.mode === 'dark';
+  const gridStroke = darkMode ? '#333' : '#eee';
+  const tickFill = darkMode ? '#aaa' : '#666';
+  const tooltipBg = darkMode ? '#1e1e1e' : '#fff';
+  const tooltipBorder = darkMode ? '#444' : '#ccc';
+  const tooltipColor = darkMode ? '#eee' : '#333';
   const chartData = (data || []).map((d) => ({
     ...d,
     date: formatShortDate(d.bucket),
@@ -68,12 +75,12 @@ export default function AdvancedCharts({ data, loading, temperatureUnit }) {
                   <stop offset="95%" stopColor={COLORS.humidity} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="temp" tick={{ fontSize: 11 }} label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10, fontSize: 11 }} />
-              <YAxis yAxisId="humid" orientation="right" tick={{ fontSize: 11 }} label={{ value: '%', position: 'insideRight', offset: 10, fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: tickFill }} />
+              <YAxis yAxisId="temp" tick={{ fontSize: 11, fill: tickFill }} label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10, fontSize: 11, fill: tickFill }} />
+              <YAxis yAxisId="humid" orientation="right" tick={{ fontSize: 11, fill: tickFill }} label={{ value: '%', position: 'insideRight', offset: 10, fontSize: 11, fill: tickFill }} />
               <Tooltip
-                contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipColor }}
                 formatter={(v, name) => {
                   const u = name === 'avg_humidity' ? '%' : tempUnit(temperatureUnit);
                   return [`${Number(v).toFixed(1)} ${u}`, name === 'avg_humidity' ? 'Humidity' : 'Temperature'];
@@ -91,12 +98,12 @@ export default function AdvancedCharts({ data, loading, temperatureUnit }) {
         <ChartWrapper title="Wind Speed & Pressure" loading={loading} isEmpty={empty}>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-              <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-              <YAxis yAxisId="wind" tick={{ fontSize: 11 }} label={{ value: 'm/s', position: 'insideLeft', offset: 10, fontSize: 11 }} />
-              <YAxis yAxisId="pres" orientation="right" tick={{ fontSize: 11 }} domain={['auto', 'auto']} label={{ value: 'hPa', position: 'insideRight', offset: 10, fontSize: 11 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: tickFill }} />
+              <YAxis yAxisId="wind" tick={{ fontSize: 11, fill: tickFill }} label={{ value: 'm/s', position: 'insideLeft', offset: 10, fontSize: 11, fill: tickFill }} />
+              <YAxis yAxisId="pres" orientation="right" tick={{ fontSize: 11, fill: tickFill }} domain={['auto', 'auto']} label={{ value: 'hPa', position: 'insideRight', offset: 10, fontSize: 11, fill: tickFill }} />
               <Tooltip
-                contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+                contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipColor }}
                 formatter={(v, name) => {
                   const u = name === 'avg_pressure' ? 'hPa' : 'm/s';
                   const l = name === 'avg_pressure' ? 'Pressure' : 'Wind Speed';

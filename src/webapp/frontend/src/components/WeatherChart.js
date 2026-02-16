@@ -3,11 +3,18 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Paper, Typography, Skeleton, Box } from '@mui/material';
+import { Paper, Typography, Skeleton, Box, useTheme } from '@mui/material';
 import { formatShortDate } from '../utils/dateFormatter';
 import { convertTemp, tempUnit } from '../utils/temperatureUtils';
 
 export default function WeatherChart({ data, loading, temperatureUnit }) {
+  const theme = useTheme();
+  const darkMode = theme.palette.mode === 'dark';
+  const gridStroke = darkMode ? '#333' : '#eee';
+  const tickFill = darkMode ? '#aaa' : '#666';
+  const tooltipBg = darkMode ? '#1e1e1e' : '#fff';
+  const tooltipBorder = darkMode ? '#444' : '#ccc';
+  const tooltipColor = darkMode ? '#eee' : '#333';
   if (loading) {
     return (
       <Paper sx={{ p: 3 }}>
@@ -45,14 +52,14 @@ export default function WeatherChart({ data, loading, temperatureUnit }) {
       </Typography>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+          <XAxis dataKey="date" tick={{ fontSize: 12, fill: tickFill }} />
           <YAxis
-            tick={{ fontSize: 12 }}
-            label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10 }}
+            tick={{ fontSize: 12, fill: tickFill }}
+            label={{ value: tempUnit(temperatureUnit), position: 'insideLeft', offset: 10, fill: tickFill }}
           />
           <Tooltip
-            contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}
+            contentStyle={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.15)', backgroundColor: tooltipBg, borderColor: tooltipBorder, color: tooltipColor }}
             formatter={(value, name) => {
               const labels = {
                 avg_temperature: 'Avg',

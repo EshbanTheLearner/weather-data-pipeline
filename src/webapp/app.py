@@ -29,14 +29,15 @@ CORS(app, origins=os.getenv("CORS_ORIGINS", "http://localhost:3000").split(","))
 api = Api(
     app,
     version="1.0",
-    title="Weather Data API",
-    description="REST API for weather data pipeline - current conditions, "
-    "historical data, statistics, and temperature trends.",
+    title="Weather & Air Quality Data API",
+    description="REST API for weather and air quality data pipeline - current conditions, "
+    "historical data, statistics, trends, and air quality metrics.",
     doc="/docs",
 )
 
 weather_ns = api.namespace("api/weather", description="Weather data operations")
 locations_ns = api.namespace("api", description="Location operations")
+air_quality_ns = api.namespace("api/air-quality", description="Air quality data operations")
 
 # ---------------------------------------------------------------------------
 # Simple TTL cache
@@ -163,6 +164,26 @@ stats_parser.add_argument(
 trends_parser = reqparse.RequestParser()
 trends_parser.add_argument("location_id", type=str, location="args")
 trends_parser.add_argument("days", type=int, default=7, location="args")
+
+aq_location_parser = reqparse.RequestParser()
+aq_location_parser.add_argument("location_id", type=str, location="args")
+
+aq_historical_parser = reqparse.RequestParser()
+aq_historical_parser.add_argument("location_id", type=str, location="args")
+aq_historical_parser.add_argument("start", type=str, location="args")
+aq_historical_parser.add_argument("end", type=str, location="args")
+aq_historical_parser.add_argument("page", type=int, default=1, location="args")
+aq_historical_parser.add_argument("per_page", type=int, default=20, location="args")
+
+aq_stats_parser = reqparse.RequestParser()
+aq_stats_parser.add_argument("location_id", type=str, location="args")
+aq_stats_parser.add_argument(
+    "period", type=str, default="daily", choices=("hourly", "daily"), location="args"
+)
+
+aq_trends_parser = reqparse.RequestParser()
+aq_trends_parser.add_argument("location_id", type=str, location="args")
+aq_trends_parser.add_argument("days", type=int, default=7, location="args")
 
 
 # ---------------------------------------------------------------------------
@@ -383,6 +404,185 @@ class Locations(Resource):
                     )
                     rows = cur.fetchall()
                     data = [{"location_id": row[0]} for row in rows]
+
+            return {"status": "success", "data": data}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "data": []}, 500
+
+
+# ---------------------------------------------------------------------------
+# Air Quality Endpoints
+# ---------------------------------------------------------------------------
+@air_quality_ns.route("/current")
+class CurrentAirQuality(Resource):
+    @air_quality_ns.expect(aq_location_parser)
+    @ttl_cache(60)
+    def get(self):
+        """Get the latest air quality reading for a location (or all locations)."""
+        args = aq_location_parser.parse_args()
+        location_id = args.get("location_id")
+
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    if location_id:
+                        cur.execute(
+                            """SELECT * FROM air_quality_data
+                               WHERE location_id = %s
+                               ORDER BY timestamp DESC LIMIT 1""",
+                            (location_id,),
+                        )
+                        row = cur.fetchone()
+                        if not row:
+                            return {
+                                "status": "error",
+                                "message": f"No data for location '{location_id}'",
+                                "data": None,
+                            }, 404
+                        data = _row_to_dict(cur, row)
+                        data["timestamp"] = _serialize(data["timestamp"])
+                    else:
+                        cur.execute(
+                            """SELECT DISTINCT ON (location_id) *
+                               FROM air_quality_data
+                               ORDER BY location_id, timestamp DESC"""
+                        )
+                        rows = cur.fetchall()
+                        data = _rows_to_list(cur, rows)
+
+            return {"status": "success", "data": data}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "data": None}, 500
+
+
+@air_quality_ns.route("/historical")
+class HistoricalAirQuality(Resource):
+    @air_quality_ns.expect(aq_historical_parser)
+    def get(self):
+        """Get paginated historical air quality data with optional date range filtering."""
+        args = aq_historical_parser.parse_args()
+        location_id = args.get("location_id")
+        start = args.get("start")
+        end = args.get("end")
+        page = max(1, args.get("page", 1))
+        per_page = min(100, max(1, args.get("per_page", 20)))
+        offset = (page - 1) * per_page
+
+        conditions = []
+        params = []
+
+        if location_id:
+            conditions.append("location_id = %s")
+            params.append(location_id)
+        if start:
+            conditions.append("timestamp >= %s")
+            params.append(start)
+        if end:
+            conditions.append("timestamp <= %s")
+            params.append(end)
+
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"SELECT COUNT(*) FROM air_quality_data {where}", params
+                    )
+                    total = cur.fetchone()[0]
+
+                    cur.execute(
+                        f"""SELECT * FROM air_quality_data {where}
+                            ORDER BY timestamp DESC
+                            LIMIT %s OFFSET %s""",
+                        params + [per_page, offset],
+                    )
+                    rows = cur.fetchall()
+                    data = _rows_to_list(cur, rows)
+
+            return {
+                "status": "success",
+                "data": data,
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total,
+                    "pages": math.ceil(total / per_page) if total else 0,
+                },
+            }
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "data": []}, 500
+
+
+@air_quality_ns.route("/stats")
+class AirQualityStats(Resource):
+    @air_quality_ns.expect(aq_stats_parser)
+    @ttl_cache(300)
+    def get(self):
+        """Get aggregated air quality statistics (hourly or daily) for the last 7 days."""
+        args = aq_stats_parser.parse_args()
+        location_id = args.get("location_id")
+        period = args.get("period", "daily")
+
+        conditions = ["period_type = %s", "bucket >= NOW() - INTERVAL '7 days'"]
+        params = [period]
+
+        if location_id:
+            conditions.append("location_id = %s")
+            params.append(location_id)
+
+        where = "WHERE " + " AND ".join(conditions)
+
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""SELECT * FROM aggregated_air_quality {where}
+                            ORDER BY bucket DESC""",
+                        params,
+                    )
+                    rows = cur.fetchall()
+                    data = _rows_to_list(cur, rows)
+
+            return {"status": "success", "data": data}
+        except Exception as exc:
+            return {"status": "error", "message": str(exc), "data": []}, 500
+
+
+@air_quality_ns.route("/trends")
+class AirQualityTrends(Resource):
+    @air_quality_ns.expect(aq_trends_parser)
+    @ttl_cache(300)
+    def get(self):
+        """Get daily AQI trends for charting (default: 7 days)."""
+        args = aq_trends_parser.parse_args()
+        location_id = args.get("location_id")
+        days = min(90, max(1, args.get("days", 7)))
+
+        conditions = [
+            "period_type = 'daily'",
+            "bucket >= NOW() - INTERVAL '%s days'",
+        ]
+        params: list = [days]
+
+        if location_id:
+            conditions.append("location_id = %s")
+            params.append(location_id)
+
+        where = "WHERE " + " AND ".join(conditions)
+
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""SELECT bucket AS date, location_id,
+                                   avg_aqi, max_aqi, avg_pm25, avg_pm10
+                            FROM aggregated_air_quality {where}
+                            ORDER BY bucket ASC""",
+                        params,
+                    )
+                    rows = cur.fetchall()
+                    data = _rows_to_list(cur, rows)
 
             return {"status": "success", "data": data}
         except Exception as exc:

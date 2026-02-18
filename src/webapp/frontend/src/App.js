@@ -58,7 +58,7 @@ export default function App() {
         <Toolbar>
           <CloudIcon sx={{ mr: 1.5 }} />
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Weather Dashboard
+            Weather & Air Quality Dashboard
           </Typography>
           <ToggleButtonGroup
             value={temperatureUnit}

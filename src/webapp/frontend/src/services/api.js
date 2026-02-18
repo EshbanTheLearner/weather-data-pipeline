@@ -41,3 +41,28 @@ export const fetchTrends = (locationId, days = 7) => {
   if (locationId) params.location_id = locationId;
   return api.get('/weather/trends', { params });
 };
+
+export const fetchCurrentAirQuality = (locationId) => {
+  const params = locationId ? { location_id: locationId } : {};
+  return api.get('/air-quality/current', { params });
+};
+
+export const fetchAirQualityHistorical = (locationId, start, end, page = 1, perPage = 20) => {
+  const params = { page, per_page: perPage };
+  if (locationId) params.location_id = locationId;
+  if (start) params.start = start;
+  if (end) params.end = end;
+  return api.get('/air-quality/historical', { params });
+};
+
+export const fetchAirQualityStats = (locationId, period = 'daily') => {
+  const params = { period };
+  if (locationId) params.location_id = locationId;
+  return api.get('/air-quality/stats', { params });
+};
+
+export const fetchAirQualityTrends = (locationId, days = 7) => {
+  const params = { days };
+  if (locationId) params.location_id = locationId;
+  return api.get('/air-quality/trends', { params });
+};

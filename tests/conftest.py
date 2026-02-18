@@ -129,3 +129,46 @@ def sample_aggregated_row():
         144,             # sample_count
         datetime(2025, 1, 15, 6, 0, 0, tzinfo=timezone.utc),  # processed_at
     )
+
+
+@pytest.fixture()
+def sample_air_quality_row():
+    """A single air_quality_data row as returned by psycopg2."""
+    return (
+        datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
+        "LOC001",       # location_id
+        42,             # aqi
+        "Good",         # aqi_category
+        "pm25",         # dominant_pollutant
+        8.5,            # pm25
+        22.0,           # pm10
+        35.0,           # o3
+        15.0,           # no2
+        5.0,            # so2
+        0.3,            # co
+        "openaq",       # source
+    )
+
+
+@pytest.fixture()
+def sample_aggregated_aq_row():
+    """A single aggregated_air_quality row."""
+    return (
+        datetime(2025, 1, 15, 0, 0, 0, tzinfo=timezone.utc),  # bucket
+        "LOC001",       # location_id
+        "daily",        # period_type
+        42.0,           # avg_aqi
+        28,             # min_aqi
+        65,             # max_aqi
+        8.5,            # avg_pm25
+        15.0,           # max_pm25
+        22.0,           # avg_pm10
+        38.0,           # max_pm10
+        35.0,           # avg_o3
+        15.0,           # avg_no2
+        5.0,            # avg_so2
+        0.3,            # avg_co
+        "pm25",         # dominant_pollutant
+        144,            # sample_count
+        datetime(2025, 1, 15, 6, 0, 0, tzinfo=timezone.utc),  # processed_at
+    )

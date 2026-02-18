@@ -26,13 +26,6 @@ DB_NAME="${POSTGRES_DB:-weather_db}"
 DB_PASSWORD="${POSTGRES_PASSWORD:-weather_pass_2024}"
 CONTAINER_NAME="weather-timescaledb"
 
-SEED_FILE="${SCRIPT_DIR}/seed_data.sql"
-
-if [ ! -f "${SEED_FILE}" ]; then
-    echo "ERROR: Seed file not found at ${SEED_FILE}"
-    exit 1
-fi
-
 echo "Waiting for TimescaleDB container to be healthy..."
 RETRIES=30
 until docker exec "${CONTAINER_NAME}" pg_isready -U "${DB_USER}" -d "${DB_NAME}" > /dev/null 2>&1; do
@@ -46,7 +39,11 @@ until docker exec "${CONTAINER_NAME}" pg_isready -U "${DB_USER}" -d "${DB_NAME}"
 done
 
 echo "TimescaleDB is ready. Running seed data..."
-docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" < "${SEED_FILE}"
+for SEED_FILE in "${SCRIPT_DIR}"/*.sql; do
+    [ -f "${SEED_FILE}" ] || continue
+    echo "  Loading: $(basename "${SEED_FILE}")"
+    docker exec -i "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" < "${SEED_FILE}"
+done
 
 echo ""
 echo "Seed data loaded successfully."
@@ -57,7 +54,13 @@ docker exec "${CONTAINER_NAME}" psql -U "${DB_USER}" -d "${DB_NAME}" -c \
      UNION ALL
      SELECT 'aggregated_weather (hourly)', COUNT(*) FROM aggregated_weather WHERE period_type = 'hourly'
      UNION ALL
-     SELECT 'aggregated_weather (daily)', COUNT(*) FROM aggregated_weather WHERE period_type = 'daily';"
+     SELECT 'aggregated_weather (daily)', COUNT(*) FROM aggregated_weather WHERE period_type = 'daily'
+     UNION ALL
+     SELECT 'air_quality_data', COUNT(*) FROM air_quality_data
+     UNION ALL
+     SELECT 'aggregated_air_quality (hourly)', COUNT(*) FROM aggregated_air_quality WHERE period_type = 'hourly'
+     UNION ALL
+     SELECT 'aggregated_air_quality (daily)', COUNT(*) FROM aggregated_air_quality WHERE period_type = 'daily';"
 
 echo ""
 echo "Done."

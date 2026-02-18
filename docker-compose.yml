@@ -14,6 +14,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init/:/docker-entrypoint-initdb.d/
+      - ./db/schema/:/db/schema/:ro
+      - ./db/seed/:/db/seed/:ro
     env_file:
       - .env
     healthcheck:
